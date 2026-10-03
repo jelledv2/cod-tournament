@@ -197,13 +197,37 @@ p {
 
 @media (min-width: 60rem) {
   .display {
-    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  /* The stage column is narrower now, so a 10-letter name must still fit on one line. */
+  .display .versus-name:not(.is-long) {
+    font-size: clamp(2.75rem, 7.5vw, 9rem);
+  }
+  .display .side .panel-title {
+    font-size: clamp(1rem, 1.3vw, 1.6rem);
   }
   .display .board {
-    font-size: clamp(1rem, 1.35vw, 1.6rem);
+    font-size: clamp(1.2rem, 1.7vw, 2.2rem);
   }
   .display .board th {
-    font-size: clamp(0.8rem, 0.9vw, 1.1rem);
+    font-size: clamp(0.85rem, 1.05vw, 1.3rem);
+  }
+  .display .board td {
+    padding: 0.5em 0.4em;
+  }
+  .display .board .col-rank {
+    width: 2em;
+  }
+  .display .board td.col-name,
+  .display .board td.col-points {
+    font-size: 1.45em;
+    line-height: 1.1;
+  }
+  .display .board td.col-points {
+    font-weight: 800;
+  }
+  .display .progress-label {
+    font-size: clamp(1rem, 1.3vw, 1.6rem);
   }
 }
 
