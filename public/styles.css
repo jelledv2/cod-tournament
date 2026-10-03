@@ -1,0 +1,591 @@
+/* Shared styles for the display page and the admin panel.
+   System fonts only, no external assets. */
+
+:root {
+  --bg: #171a14;
+  --panel: #21251c;
+  --panel-raised: #2b3024;
+  --line: #3a4130;
+  --text: #eeeedf;
+  --muted: #a3a68f;
+  --accent: #ffb300;
+  --accent-ink: #1b1600;
+  --boss: #ff4d3d;
+
+  --display-font: Impact, Haettenschweiler, 'Arial Narrow Bold', 'Roboto Condensed',
+    sans-serif-condensed, system-ui, sans-serif;
+  --body-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body-font);
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.display-type {
+  font-family: var(--display-font);
+  font-weight: 700;
+  font-synthesis: none;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
+}
+
+.panel-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 0.6rem;
+}
+
+.note {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ---- connection indicator ------------------------------------------------ */
+
+.offline {
+  position: fixed;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 20;
+  background: var(--boss);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+}
+
+/* ---- leaderboard --------------------------------------------------------- */
+
+.board {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.board th,
+.board td {
+  padding: 0.45rem 0.4rem;
+  text-align: right;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.board th {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.board tr:last-child td {
+  border-bottom: 0;
+}
+
+.board .col-rank {
+  text-align: left;
+  color: var(--muted);
+  width: 2rem;
+}
+
+.board .col-name {
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: break-word;
+  font-weight: 600;
+}
+
+.board .col-points {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.board .is-playing .col-name::after {
+  content: '';
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-left: 0.5em;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: middle;
+}
+
+.board-empty {
+  color: var(--muted);
+  padding: 0.5rem 0;
+}
+
+/* A very long name on a very small phone scrolls instead of breaking the page. */
+#board {
+  overflow-x: auto;
+}
+
+/* ---- round-robin progress ------------------------------------------------ */
+
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-track {
+  height: 0.5rem;
+  margin-top: 0.5rem;
+  background: var(--panel-raised);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 0.4s ease;
+}
+
+/* ==== display page ======================================================== */
+
+.display {
+  min-height: 100vh;
+  padding: clamp(0.75rem, 2vw, 2rem);
+  display: grid;
+  gap: clamp(0.75rem, 1.5vw, 1.5rem);
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+}
+
+.display .side,
+.display .main {
+  display: grid;
+  gap: clamp(0.75rem, 1.5vw, 1.5rem);
+  align-content: start;
+  min-width: 0;
+}
+
+@media (min-width: 60rem) {
+  .display {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
+  .display .board {
+    font-size: clamp(1rem, 1.35vw, 1.6rem);
+  }
+  .display .board th {
+    font-size: clamp(0.8rem, 0.9vw, 1.1rem);
+  }
+}
+
+/* Now playing: the one loud element on the page. */
+.stage {
+  position: relative;
+  padding: clamp(1.25rem, 3vw, 3rem);
+  border-left: 0.5rem solid var(--accent);
+  overflow: hidden;
+}
+
+.stage-label {
+  font-size: clamp(1rem, 1.6vw, 1.75rem);
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: clamp(0.75rem, 1.5vw, 1.5rem);
+}
+
+.versus {
+  display: grid;
+  gap: clamp(0.25rem, 0.8vw, 0.75rem);
+}
+
+.versus-name {
+  font-size: clamp(2.75rem, 8.5vw, 9rem);
+  overflow-wrap: anywhere;
+}
+
+.versus-name.is-long {
+  font-size: clamp(2rem, 5.5vw, 6rem);
+}
+
+.versus-vs {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: clamp(1.25rem, 2.5vw, 2.75rem);
+  color: var(--accent);
+}
+
+.versus-vs::after {
+  content: '';
+  flex: 1;
+  height: 0.2rem;
+  background: var(--accent);
+  transform: skewX(-30deg);
+}
+
+.stage-message {
+  font-size: clamp(2.25rem, 6vw, 6rem);
+}
+
+.stage-hint {
+  margin-top: 1rem;
+  color: var(--muted);
+  font-size: clamp(1rem, 1.5vw, 1.5rem);
+}
+
+.stage.is-boss {
+  --accent: var(--boss);
+  background: repeating-linear-gradient(
+      -45deg,
+      rgba(255, 77, 61, 0.09) 0 1.5rem,
+      transparent 1.5rem 3rem
+    ),
+    var(--panel);
+  border-color: var(--boss);
+  border-left-width: 0.5rem;
+}
+
+.stage.is-champion {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.stage.is-champion .stage-label,
+.stage.is-champion .stage-hint {
+  color: var(--accent-ink);
+}
+
+.champion-name {
+  font-size: clamp(3.5rem, 11vw, 12rem);
+  overflow-wrap: anywhere;
+}
+
+.champion-name.is-long {
+  font-size: clamp(2.5rem, 7vw, 7.5rem);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .stage.is-champion .champion-name {
+    animation: champion-in 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  }
+  @keyframes champion-in {
+    from {
+      transform: scale(0.6);
+      opacity: 0;
+    }
+  }
+}
+
+.next-match {
+  font-size: clamp(1.5rem, 3vw, 3.25rem);
+  overflow-wrap: anywhere;
+  margin-bottom: 0.5rem;
+}
+
+.next-match .vs {
+  color: var(--accent);
+  font-size: 0.6em;
+  margin: 0 0.4em;
+}
+
+.recent {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: clamp(0.95rem, 1.15vw, 1.3rem);
+}
+
+.recent li {
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.recent li:last-child {
+  border-bottom: 0;
+}
+
+.recent .winner {
+  font-weight: 700;
+}
+
+.recent .is-skipped {
+  color: var(--muted);
+  font-size: 0.9em;
+}
+
+.recent .is-boss {
+  color: var(--boss);
+}
+
+/* ==== admin page ========================================================== */
+
+.admin {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 0 0.75rem 3rem;
+}
+
+.admin-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-bar h1 {
+  font-size: 1.4rem;
+}
+
+.admin section {
+  margin-top: 1rem;
+}
+
+.admin .match-names {
+  font-size: 1.9rem;
+  overflow-wrap: anywhere;
+  margin-bottom: 0.75rem;
+}
+
+.admin .match-names .vs {
+  color: var(--accent);
+  font-size: 0.6em;
+  margin: 0 0.4em;
+}
+
+.admin .is-boss {
+  border-color: var(--boss);
+}
+
+.admin .is-boss .panel-title {
+  color: var(--boss);
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+.btn {
+  min-height: 3rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-raised);
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  overflow-wrap: anywhere;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.btn:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn-danger {
+  border-color: var(--boss);
+  color: var(--boss);
+  background: transparent;
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+}
+
+.result-buttons {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.result-buttons .btn {
+  min-height: 4.25rem;
+  font-size: 1.2rem;
+}
+
+.result-buttons .btn-draw {
+  min-height: 3.25rem;
+  font-size: 1rem;
+}
+
+.stack {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.add-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.add-form input,
+.field select {
+  flex: 1;
+  min-width: 0;
+  min-height: 3rem;
+  padding: 0 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.player-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+.player-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.player-list li:last-child {
+  border-bottom: 0;
+}
+
+.player-list .name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.player-list .stats {
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-list .btn {
+  min-width: 3rem;
+  padding: 0;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.danger {
+  border-color: var(--boss);
+}
+
+.danger .panel-title {
+  color: var(--boss);
+}
+
+dialog {
+  width: min(26rem, calc(100vw - 2rem));
+  padding: 1.25rem;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+dialog h2 {
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.field select {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.dialog-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  z-index: 30;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  padding: 0.7rem 1rem;
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 600;
+  border-radius: 6px;
+}
+
+.toast.is-error {
+  background: var(--boss);
+  color: #fff;
+}

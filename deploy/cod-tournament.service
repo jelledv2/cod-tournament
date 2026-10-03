@@ -1,0 +1,20 @@
+# systemd unit for the CoD Tournament Manager.
+# Adjust User, WorkingDirectory and EnvironmentFile if your user is not "pi"
+# or the repo lives somewhere else. Check the node path with: which node
+
+[Unit]
+Description=CoD Tournament Manager
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/cod-tournament
+EnvironmentFile=/home/pi/cod-tournament/.env
+ExecStart=/usr/bin/node server/index.js
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

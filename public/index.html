@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CoD Tournament</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div id="offline" class="offline" hidden>Reconnecting…</div>
+
+    <div class="display">
+      <div class="main">
+        <section id="stage" class="panel stage" aria-live="polite"></section>
+
+        <section id="next" class="panel" hidden>
+          <h2 class="panel-title">Up next</h2>
+          <p id="next-match" class="next-match display-type"></p>
+          <p class="note">May change if players are added or a match is skipped.</p>
+        </section>
+
+        <section id="recent-panel" class="panel" hidden>
+          <h2 class="panel-title">Recent results</h2>
+          <ul id="recent" class="recent"></ul>
+        </section>
+      </div>
+
+      <div class="side">
+        <section class="panel">
+          <h2 id="board-title" class="panel-title">Leaderboard</h2>
+          <div id="board"></div>
+        </section>
+
+        <section id="progress" class="panel" hidden>
+          <div class="progress-label">
+            <span>Round robin</span>
+            <span id="progress-text"></span>
+          </div>
+          <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
+        </section>
+      </div>
+    </div>
+
+    <script src="/display.js"></script>
+  </body>
+</html>

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CoD Tournament admin</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div id="offline" class="offline" hidden>Reconnecting…</div>
+
+    <div class="admin">
+      <header class="admin-bar">
+        <h1 class="display-type">Tournament admin</h1>
+        <button id="undo" class="btn" type="button" disabled>Undo</button>
+      </header>
+
+      <section id="current" class="panel">
+        <h2 id="current-title" class="panel-title">Now playing</h2>
+        <div id="current-body"></div>
+      </section>
+
+      <section id="next" class="panel" hidden>
+        <h2 class="panel-title">Up next</h2>
+        <p id="next-match"></p>
+      </section>
+
+      <section class="panel">
+        <h2 id="players-title" class="panel-title">Players</h2>
+        <form id="add-form" class="add-form" autocomplete="off">
+          <input id="add-name" type="text" maxlength="20" placeholder="Player name" aria-label="Player name" enterkeyhint="done" />
+          <button class="btn btn-primary" type="submit">Add</button>
+        </form>
+        <ul id="players" class="player-list"></ul>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">Boss battle</h2>
+        <div id="boss-body" class="stack"></div>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">Leaderboard</h2>
+        <div id="board"></div>
+        <p id="progress" class="note"></p>
+      </section>
+
+      <section class="panel danger">
+        <h2 class="panel-title">Danger zone</h2>
+        <div class="stack">
+          <button id="reset-scores" class="btn btn-danger btn-block" type="button">Reset scores (keep players)</button>
+          <button id="reset-all" class="btn btn-danger btn-block" type="button">Reset everything</button>
+        </div>
+      </section>
+    </div>
+
+    <dialog id="boss-dialog">
+      <form method="dialog">
+        <h2>Start boss battle</h2>
+        <p class="note">Prefilled with the top 2. Change them to settle a tie.</p>
+        <label class="field">Player 1 <select id="boss-a"></select></label>
+        <label class="field">Player 2 <select id="boss-b"></select></label>
+        <div class="dialog-actions">
+          <button class="btn" type="submit" value="cancel">Cancel</button>
+          <button class="btn btn-primary" type="submit" value="confirm">Start boss battle</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="confirm-dialog">
+      <form method="dialog">
+        <h2 id="confirm-title"></h2>
+        <p id="confirm-text" class="note"></p>
+        <div class="dialog-actions">
+          <button class="btn" type="submit" value="cancel">Cancel</button>
+          <button id="confirm-ok" class="btn btn-danger" type="submit" value="confirm"></button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" hidden></div>
+
+    <script src="/admin/admin.js"></script>
+  </body>
+</html>
