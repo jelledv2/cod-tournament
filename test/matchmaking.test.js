@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   pairKey,
-  isSamePair,
+  isSameGroup,
   pickMatch,
   pickNextMatch,
   roundRobinProgress,
@@ -29,22 +29,23 @@ function makePlayers(n) {
 
 // Plays `count` matches the way the tournament does: the current match is
 // picked (or promoted from "up next"), then played or skipped.
-function simulate({ players, count, random, skipChance = 0, onMatch }) {
+function simulate({ players, count, random, size = 2, skipChance = 0, onMatch }) {
   const history = [];
   let last = null;
   for (let i = 0; i < count; i++) {
-    const match = pickMatch(players, history, last, random);
+    const match = pickMatch(players, history, last, size, random);
     if (!match) break;
     const skipped = random() < skipChance;
-    const outcome = skipped ? 'skipped' : ['A', 'B', 'draw'][Math.floor(random() * 3)];
+    const options = [...match.players, 'draw'];
+    const outcome = skipped ? 'skipped' : options[Math.floor(random() * options.length)];
     history.push({ ...match, outcome, isBoss: false });
     if (!skipped) {
       for (const p of players) {
-        if (p.id === match.playerA || p.id === match.playerB) p.played++;
+        if (match.players.includes(p.id)) p.played++;
       }
     }
     if (onMatch) onMatch(match, i, history, last);
-    last = [match.playerA, match.playerB];
+    last = match.players;
   }
   return history;
 }
@@ -69,7 +70,7 @@ test('6 players: all 15 pairs have met within 20 matches', () => {
   for (let seed = 1; seed <= SEEDS; seed++) {
     const players = makePlayers(6);
     const history = simulate({ players, count: 20, random: seededRandom(seed) });
-    const pairs = new Set(history.map((m) => pairKey(m.playerA, m.playerB)));
+    const pairs = new Set(history.map((m) => pairKey(...m.players)));
     assert.equal(pairs.size, 15, `seed ${seed}: only ${pairs.size} pairs`);
     assert.deepEqual(roundRobinProgress(players, history), { done: 15, total: 15 });
   }
@@ -84,9 +85,9 @@ test('same matchup never appears twice in a row, including after skips', () => {
         random: seededRandom(seed),
         skipChance: 0.3,
         onMatch: (match, i, _history, last) => {
-          assert.notEqual(match.playerA, match.playerB);
+          assert.notEqual(match.players[0], match.players[1]);
           assert.ok(
-            !isSamePair([match.playerA, match.playerB], last),
+            !isSameGroup(match.players, last),
             `${n} players, seed ${seed}, match ${i + 1}: repeated matchup`
           );
         },
@@ -107,10 +108,10 @@ test('"up next" is never the same matchup as the current match', () => {
         // history already contains `match`; "up next" is computed before it is played
         const before = history.slice(0, -1);
         const playersBefore = players.map((p) =>
-          p.id === match.playerA || p.id === match.playerB ? { ...p, played: p.played - 1 } : p
+          match.players.includes(p.id) ? { ...p, played: p.played - 1 } : p
         );
-        const next = pickNextMatch(playersBefore, before, match, random);
-        assert.ok(!isSamePair([next.playerA, next.playerB], [match.playerA, match.playerB]));
+        const next = pickNextMatch(playersBefore, before, match, 2, random);
+        assert.ok(!isSameGroup(next.players, match.players));
       },
     });
   }
@@ -121,10 +122,10 @@ test('exactly 2 players keep getting matched', () => {
   const history = simulate({ players, count: 10, random: seededRandom(1), skipChance: 0.3 });
   assert.equal(history.length, 10);
   for (const m of history) {
-    assert.equal(pairKey(m.playerA, m.playerB), 'p1|p2');
+    assert.equal(pairKey(...m.players), 'p1|p2');
   }
-  const next = pickNextMatch(players, history, history[9], seededRandom(2));
-  assert.equal(pairKey(next.playerA, next.playerB), 'p1|p2');
+  const next = pickNextMatch(players, history, history[9], 2, seededRandom(2));
+  assert.equal(pairKey(...next.players), 'p1|p2');
 });
 
 test('a late joiner with 0 played is picked before players with more matches', () => {
@@ -135,8 +136,8 @@ test('a late joiner with 0 played is picked before players with more matches', (
     const last = history[history.length - 1];
     players.push({ id: 'late', active: true, played: 0 });
 
-    const match = pickMatch(players, history, [last.playerA, last.playerB], random);
-    assert.equal(match.playerA, 'late', `seed ${seed}`);
+    const match = pickMatch(players, history, last.players, 2, random);
+    assert.equal(match.players[0], 'late', `seed ${seed}`);
   }
 });
 
@@ -151,7 +152,7 @@ test('removed players are never picked', () => {
       random: seededRandom(seed),
       skipChance: 0.2,
       onMatch: (match) => {
-        for (const id of [match.playerA, match.playerB]) {
+        for (const id of match.players) {
           assert.ok(id !== 'p2' && id !== 'p5', `seed ${seed}: picked removed player ${id}`);
         }
       },
@@ -160,27 +161,111 @@ test('removed players are never picked', () => {
 });
 
 test('fewer than 2 active players: no match', () => {
-  assert.equal(pickMatch([], [], null, seededRandom(1)), null);
-  assert.equal(pickMatch(makePlayers(1), [], null, seededRandom(1)), null);
+  assert.equal(pickMatch([], [], null, 2, seededRandom(1)), null);
+  assert.equal(pickMatch(makePlayers(1), [], null, 4, seededRandom(1)), null);
 
   const players = makePlayers(3);
   players[0].active = false;
   players[1].active = false;
-  assert.equal(pickMatch(players, [], null, seededRandom(1)), null);
-  assert.equal(pickNextMatch(players, [], null, seededRandom(1)), null);
+  assert.equal(pickMatch(players, [], null, 2, seededRandom(1)), null);
+  assert.equal(pickNextMatch(players, [], null, 2, seededRandom(1)), null);
 });
 
 test('round-robin progress ignores skips, boss matches and removed players', () => {
   const players = makePlayers(4);
   const history = [
-    { playerA: 'p1', playerB: 'p2', outcome: 'A', isBoss: false },
-    { playerA: 'p2', playerB: 'p1', outcome: 'draw', isBoss: false },
-    { playerA: 'p3', playerB: 'p4', outcome: 'skipped', isBoss: false },
-    { playerA: 'p1', playerB: 'p3', outcome: 'A', isBoss: true },
-    { playerA: 'p2', playerB: 'p4', outcome: 'B', isBoss: false },
+    { players: ['p1', 'p2'], outcome: 'p1', isBoss: false },
+    { players: ['p2', 'p1'], outcome: 'draw', isBoss: false },
+    { players: ['p3', 'p4'], outcome: 'skipped', isBoss: false },
+    { players: ['p1', 'p3'], outcome: 'p1', isBoss: true },
+    { players: ['p2', 'p4'], outcome: 'p4', isBoss: false },
   ];
   assert.deepEqual(roundRobinProgress(players, history), { done: 2, total: 6 });
 
   players[3].active = false;
   assert.deepEqual(roundRobinProgress(players, history), { done: 1, total: 3 });
+});
+
+test('matches have the configured size, with distinct players', () => {
+  for (const [size, n] of [[3, 6], [4, 8], [4, 5], [8, 9]]) {
+    for (let seed = 1; seed <= 30; seed++) {
+      simulate({
+        players: makePlayers(n),
+        count: 20,
+        size,
+        random: seededRandom(seed),
+        onMatch: (match) => {
+          assert.equal(match.players.length, size);
+          assert.equal(new Set(match.players).size, size);
+        },
+      });
+    }
+  }
+});
+
+test('more spots than active players: everyone plays', () => {
+  const players = makePlayers(3);
+  const match = pickMatch(players, [], ['p1', 'p2', 'p3'], 4, seededRandom(1));
+  assert.deepEqual(match.players.slice().sort(), ['p1', 'p2', 'p3']);
+});
+
+test('larger matches: played stays even, no group twice in a row, removed players stay out', () => {
+  for (const [size, n] of [[3, 6], [3, 4], [4, 8], [4, 5], [4, 7], [5, 6], [8, 9]]) {
+    for (let seed = 1; seed <= 50; seed++) {
+      const players = makePlayers(n + 1);
+      players[n].active = false;
+      simulate({
+        players,
+        count: 30,
+        size,
+        random: seededRandom(seed),
+        onMatch: (match, i, _history, last) => {
+          const label = `size ${size}, ${n} players, seed ${seed}, match ${i + 1}`;
+          assert.ok(!isSameGroup(match.players, last), `${label}: repeated group`);
+          assert.ok(!match.players.includes(`p${n + 1}`), `${label}: removed player`);
+          const played = players.filter((p) => p.active).map((p) => p.played);
+          assert.ok(Math.max(...played) - Math.min(...played) <= 1, `${label}: uneven`);
+        },
+      });
+    }
+  }
+});
+
+test('larger matches: no repeated group after skips either', () => {
+  for (const [size, n] of [[3, 4], [4, 5], [4, 8]]) {
+    for (let seed = 1; seed <= 50; seed++) {
+      simulate({
+        players: makePlayers(n),
+        count: 30,
+        size,
+        skipChance: 0.3,
+        random: seededRandom(seed),
+        onMatch: (match, _i, _history, last) => {
+          assert.ok(!isSameGroup(match.players, last), `size ${size}, ${n} players, seed ${seed}`);
+        },
+      });
+    }
+  }
+});
+
+test('larger matches: everyone meets everyone quickly', () => {
+  for (const [size, n, within] of [[3, 6, 14], [4, 8, 8], [3, 9, 24]]) {
+    for (let seed = 1; seed <= 50; seed++) {
+      const players = makePlayers(n);
+      const history = simulate({ players, count: within, size, random: seededRandom(seed) });
+      const { done, total } = roundRobinProgress(players, history);
+      assert.equal(done, total, `size ${size}, ${n} players, seed ${seed}: ${done}/${total}`);
+    }
+  }
+});
+
+test('"up next" has the configured size and differs from the current group', () => {
+  for (let seed = 1; seed <= 50; seed++) {
+    const random = seededRandom(seed);
+    const players = makePlayers(5);
+    const current = pickMatch(players, [], null, 4, random);
+    const next = pickNextMatch(players, [], current, 4, random);
+    assert.equal(next.players.length, 4);
+    assert.ok(!isSameGroup(next.players, current.players));
+  }
 });

@@ -260,6 +260,22 @@ p {
   font-size: clamp(2rem, 5.5vw, 6rem);
 }
 
+/* 3+ players: a grid of names instead of the big A VS B stack. */
+.versus.is-many {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(0.75rem, 1.5vw, 1.5rem);
+}
+
+.display .versus.is-many .versus-name {
+  font-size: clamp(1.75rem, 4.2vw, 5rem);
+  padding-left: 0.3em;
+  border-left: 0.12em solid var(--accent);
+}
+
+.display .versus.is-many .versus-name.is-long {
+  font-size: clamp(1.4rem, 2.8vw, 3.25rem);
+}
+
 .versus-vs {
   display: flex;
   align-items: center;
@@ -486,6 +502,34 @@ select:focus-visible {
 .result-buttons .btn-draw {
   min-height: 3.25rem;
   font-size: 1rem;
+}
+
+.result-buttons.is-many {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.result-buttons.is-many .btn-draw {
+  grid-column: 1 / -1;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.stepper .btn {
+  min-width: 4rem;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.stepper output {
+  min-width: 2rem;
+  text-align: center;
+  font-size: 2.25rem;
+  color: var(--accent);
 }
 
 .stack {

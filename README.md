@@ -40,19 +40,23 @@ can be anything (e.g. `admin`), the password is `ADMIN_PASSWORD`.
 ## Running the evening
 
 1. Open `/admin` on your phone and add the players. The first match appears as
-   soon as there are two.
-2. After each match tap **[name] wins** or **Draw**. Tap **Skip match** if
+   soon as there are two. Set **Players per match** (2-8) to how many people
+   play at the same time. Changing it picks a new current match; results stay.
+2. After each match tap **[name] wins** for the one winner, or **Draw**. Tap
+   **Skip match** if
    someone is away; a skip counts for nobody.
 3. Made a mistake? **Undo** reverts the last action, up to 30 steps back
    (results, skips, added/removed players, boss battle, resets).
 4. Late arrivals can be added at any time and will play catch-up. Removing a
    player keeps their results; adding the same name again brings them back.
 5. When the round-robin counter is full (or it's getting late), tap
-   **Start boss battle**. It is prefilled with the top 2. The winner is the
+   **Start boss battle**. It is prefilled with the top players, as many as
+   there are players per match. The winner is the
    champion; a draw means a rematch. The boss battle doesn't change the points.
 6. **Reset scores** starts a fresh tournament with the same players.
 
-Scoring: a win is 1 point, a draw or a loss is 0. The leaderboard sorts by
+Scoring: the winner gets 1 point, everyone else in the match 0 (a loss). A draw
+is 0 for everyone. The leaderboard sorts by
 points, then points per match, then fewest matches played, then name.
 
 ## Data

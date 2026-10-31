@@ -13,7 +13,8 @@ function emptyState() {
     players: [],
     currentMatch: null,
     nextMatch: null,
-    lastMatchPair: null,
+    matchSize: 2,
+    lastMatchPlayers: null,
     history: [],
     champion: null,
   };
@@ -26,6 +27,29 @@ function looksLikeState(value) {
     Array.isArray(value.players) &&
     Array.isArray(value.history)
   );
+}
+
+// Files saved before matches could have more than 2 players stored playerA/playerB,
+// outcome "A"/"B" and lastMatchPair. Newer files pass through unchanged.
+function migrateMatch(match) {
+  if (!match || match.players) return match;
+  const { playerA, playerB, ...rest } = match;
+  const out = { ...rest, players: [playerA, playerB] };
+  if (match.outcome === 'A') out.outcome = playerA;
+  if (match.outcome === 'B') out.outcome = playerB;
+  return out;
+}
+
+function migrate(saved) {
+  const { lastMatchPair, ...rest } = saved;
+  return {
+    ...emptyState(),
+    lastMatchPlayers: lastMatchPair || null,
+    ...rest,
+    currentMatch: migrateMatch(saved.currentMatch),
+    nextMatch: migrateMatch(saved.nextMatch),
+    history: saved.history.map(migrateMatch),
+  };
 }
 
 function createStore(filePath) {
@@ -54,7 +78,7 @@ function createStore(filePath) {
     try {
       const parsed = JSON.parse(raw);
       if (!looksLikeState(parsed)) throw new Error('unexpected shape');
-      return { ...emptyState(), ...parsed };
+      return migrate(parsed);
     } catch (err) {
       backupCorruptFile(err.message);
       return emptyState();
@@ -70,4 +94,4 @@ function createStore(filePath) {
   return { load, save };
 }
 
-module.exports = { createStore, emptyState };
+module.exports = { createStore, emptyState, migrate };

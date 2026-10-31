@@ -2,6 +2,9 @@
 
 const $ = (id) => document.getElementById(id);
 
+const MIN_MATCH_SIZE = 2;
+const MAX_MATCH_SIZE = 8;
+
 // Tiny DOM helper. Text is always set via textContent, so names are safe.
 function el(tag, className, ...children) {
   const node = document.createElement(tag);
@@ -85,24 +88,36 @@ function confirmAction(title, text, okLabel) {
 
 async function startBossBattle() {
   const rows = state.leaderboard;
-  for (const [select, preselected] of [[$('boss-a'), 0], [$('boss-b'), 1]]) {
-    select.replaceChildren(
+  const count = Math.min(state.matchSize, rows.length);
+  const selects = Array.from({ length: count }, (_, preselected) =>
+    el(
+      'select',
+      '',
       ...rows.map((row, i) => {
         const option = el('option', '', `${row.rank}. ${row.name} (${row.points} pts)`);
         option.value = row.id;
         option.selected = i === preselected;
         return option;
       })
-    );
-  }
+    )
+  );
+  $('boss-hint').textContent = `Prefilled with the top ${count}. Change them to settle a tie.`;
+  $('boss-fields').replaceChildren(
+    ...selects.map((select, i) => el('label', 'field', `Player ${i + 1} `, select))
+  );
   if (!(await openDialog($('boss-dialog')))) return;
-  await api('POST', '/boss', { playerA: $('boss-a').value, playerB: $('boss-b').value });
+  await api('POST', '/boss', { players: selects.map((select) => select.value) });
 }
 
 // ---- rendering ---------------------------------------------------------------
 
+// "A vs B vs C" as DOM nodes.
+function withVs(players) {
+  return players.flatMap((p, i) => (i === 0 ? [p.name] : [el('span', 'vs', 'vs'), p.name]));
+}
+
 function matchNames(match) {
-  return el('p', 'match-names display-type', match.playerA.name, el('span', 'vs', 'vs'), match.playerB.name);
+  return el('p', 'match-names display-type', ...withVs(match.players));
 }
 
 function renderCurrent() {
@@ -125,10 +140,9 @@ function renderCurrent() {
     matchNames(match),
     el(
       'div',
-      'result-buttons',
-      button(`${match.playerA.name} wins`, 'btn-primary', result('A')),
-      button(isBoss ? 'Draw (rematch)' : 'Draw', 'btn-draw', result('draw')),
-      button(`${match.playerB.name} wins`, 'btn-primary', result('B'))
+      `result-buttons${match.players.length >= 4 ? ' is-many' : ''}`,
+      ...match.players.map((p) => button(`${p.name} wins`, 'btn-primary', result(p.id))),
+      button(isBoss ? 'Draw (rematch)' : 'Draw', 'btn-draw', result('draw'))
     ),
   ];
   if (!isBoss) {
@@ -142,7 +156,15 @@ function renderCurrent() {
 function renderNext() {
   const next = state.nextMatch;
   $('next').hidden = !next;
-  if (next) $('next-match').textContent = `${next.playerA.name} vs ${next.playerB.name}`;
+  if (next) $('next-match').textContent = next.players.map((p) => p.name).join(' vs ');
+}
+
+function renderMatchSize() {
+  $('size-value').textContent = state.matchSize;
+  $('size-note').textContent =
+    state.phase === 'regular'
+      ? 'Changing this picks a new current match. With fewer players than this, everyone plays.'
+      : 'Applies to new matches. A boss battle keeps its players.';
 }
 
 function renderPlayers() {
@@ -173,7 +195,7 @@ function renderBoss() {
     body.replaceChildren(el('p', 'note', 'Needs at least two players.'));
   } else {
     body.replaceChildren(
-      el('p', 'note', 'The final between two players. It decides the champion and does not change points.'),
+      el('p', 'note', 'The final between the top players. It decides the champion and does not change points.'),
       button('Start boss battle', 'btn-block', startBossBattle)
     );
   }
@@ -207,6 +229,7 @@ function renderBoard() {
 function render() {
   renderCurrent();
   renderNext();
+  renderMatchSize();
   renderPlayers();
   renderBoss();
   renderBoard();
@@ -214,6 +237,8 @@ function render() {
   // Dialog buttons stay usable; everything else locks while a request runs.
   for (const node of document.querySelectorAll('.admin button')) node.disabled = busy;
   $('undo').disabled = busy || !state.canUndo;
+  $('size-down').disabled = busy || state.matchSize <= MIN_MATCH_SIZE;
+  $('size-up').disabled = busy || state.matchSize >= MAX_MATCH_SIZE;
 }
 
 // ---- static controls ---------------------------------------------------------
@@ -222,6 +247,9 @@ $('undo').addEventListener('click', async () => {
   const data = await api('POST', '/undo');
   if (data) toast(`Undone: ${data.undone}`);
 });
+
+$('size-down').addEventListener('click', () => api('POST', '/match-size', { size: state.matchSize - 1 }));
+$('size-up').addEventListener('click', () => api('POST', '/match-size', { size: state.matchSize + 1 }));
 
 $('add-form').addEventListener('submit', async (event) => {
   event.preventDefault();

@@ -12,19 +12,18 @@ function withStats(players, history) {
   );
   for (const m of history) {
     if (!countsForStats(m)) continue;
-    const a = stats.get(m.playerA);
-    const b = stats.get(m.playerB);
-    if (!a || !b) continue;
-    a.played++;
-    b.played++;
-    if (m.outcome === 'draw') {
-      a.draws++;
-      b.draws++;
-    } else {
-      const [winner, loser] = m.outcome === 'A' ? [a, b] : [b, a];
-      winner.points++;
-      winner.wins++;
-      loser.losses++;
+    if (!m.players.every((id) => stats.has(id))) continue;
+    for (const id of m.players) {
+      const row = stats.get(id);
+      row.played++;
+      if (m.outcome === 'draw') {
+        row.draws++;
+      } else if (m.outcome === id) {
+        row.points++;
+        row.wins++;
+      } else {
+        row.losses++;
+      }
     }
   }
   return players.map((p) => ({ ...p, ...stats.get(p.id) }));

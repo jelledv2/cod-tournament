@@ -4,13 +4,15 @@
 // -> persists -> broadcasts -> returns the new public state.
 
 const crypto = require('node:crypto');
-const { pickMatch, pickNextMatch, isSamePair, roundRobinProgress } = require('./matchmaking');
+const { pickMatch, pickNextMatch, isSameGroup, roundRobinProgress } = require('./matchmaking');
 const { withStats, buildLeaderboard } = require('./leaderboard');
 const { emptyState } = require('./store');
 
 const MAX_UNDO = 30;
 const RECENT_MATCHES = 10;
 const MAX_NAME_LENGTH = 20;
+const MIN_MATCH_SIZE = 2;
+const MAX_MATCH_SIZE = 8;
 
 // Thrown for invalid actions; the API turns these into HTTP 400.
 class ActionError extends Error {}
@@ -31,9 +33,9 @@ function createTournament({
   const findPlayer = (id) => state.players.find((p) => p.id === id);
   const isActive = (id) => Boolean(findPlayer(id) && findPlayer(id).active);
   const nameOf = (id) => (findPlayer(id) ? findPlayer(id).name : '?');
-  const pairOf = (match) => [match.playerA, match.playerB];
-  const isInMatch = (match, id) => Boolean(match) && pairOf(match).includes(id);
-  const isPlayable = (match) => Boolean(match) && pairOf(match).every(isActive);
+  const namesOf = (ids) => ids.map(nameOf);
+  const isInMatch = (match, id) => Boolean(match) && match.players.includes(id);
+  const isPlayable = (match) => Boolean(match) && match.players.every(isActive);
   const matchId = (offset) => `m_${state.matchCounter + offset}`;
 
   // Fills in currentMatch/nextMatch for the regular phase. A current match
@@ -47,15 +49,15 @@ function createTournament({
     let current = state.currentMatch;
     if (!isPlayable(current)) {
       const next = state.nextMatch;
-      const canPromote = isPlayable(next) && !isSamePair(pairOf(next), state.lastMatchPair);
+      const canPromote = isPlayable(next) && !isSameGroup(next.players, state.lastMatchPlayers);
       current = canPromote
         ? next
-        : pickMatch(state.players, state.history, state.lastMatchPair, random);
+        : pickMatch(state.players, state.history, state.lastMatchPlayers, state.matchSize, random);
     }
-    const next = pickNextMatch(state.players, state.history, current, random);
+    const next = pickNextMatch(state.players, state.history, current, state.matchSize, random);
 
     const stamp = (match, offset) =>
-      match && { id: matchId(offset), playerA: match.playerA, playerB: match.playerB, isBoss: false };
+      match && { id: matchId(offset), players: match.players, isBoss: false };
     state.currentMatch = stamp(current, 1);
     state.nextMatch = stamp(next, 2);
   }
@@ -64,8 +66,7 @@ function createTournament({
     const match = state.currentMatch;
     state.history.push({
       id: match.id,
-      playerA: match.playerA,
-      playerB: match.playerB,
+      players: match.players,
       outcome,
       isBoss: match.isBoss,
       at: now().toISOString(),
@@ -106,11 +107,11 @@ function createTournament({
 
   function getPublicState() {
     const ref = (id) => ({ id, name: nameOf(id) });
-    const showMatch = (m) =>
-      m && { id: m.id, isBoss: m.isBoss, playerA: ref(m.playerA), playerB: ref(m.playerB) };
+    const showMatch = (m) => m && { id: m.id, isBoss: m.isBoss, players: m.players.map(ref) };
 
     return {
       phase: state.phase,
+      matchSize: state.matchSize,
       currentMatch: showMatch(state.currentMatch),
       nextMatch: showMatch(state.nextMatch),
       leaderboard: buildLeaderboard(state.players, state.history),
@@ -136,13 +137,13 @@ function createTournament({
       }
 
       const existing = state.players.find((p) => p.name.toLowerCase() === name.toLowerCase());
+      let id = existing && existing.id;
       if (existing && existing.active) {
         throw new ActionError(`${existing.name} is already in the tournament`);
       }
       if (existing) {
         existing.active = true; // back with their old stats
       } else {
-        let id;
         do {
           id = `p_${crypto.randomBytes(4).toString('hex')}`;
         } while (findPlayer(id));
@@ -157,6 +158,12 @@ function createTournament({
           losses: 0,
           joinedAt: now().toISOString(),
         });
+      }
+
+      // A match with an open spot already has everyone in it: the newcomer joins.
+      const current = state.currentMatch;
+      if (state.phase === 'regular' && current && current.players.length < state.matchSize) {
+        current.players.push(id);
       }
 
       refreshMatches();
@@ -185,16 +192,17 @@ function createTournament({
 
   function recordResult(outcome) {
     return act(() => {
-      if (!['A', 'B', 'draw'].includes(outcome)) {
-        throw new ActionError('Outcome must be "A", "B" or "draw"');
-      }
       const match = state.currentMatch;
       if (!match) throw new ActionError('There is no current match');
+      if (outcome !== 'draw' && !match.players.includes(outcome)) {
+        throw new ActionError('Outcome must be a player in the match or "draw"');
+      }
 
-      const a = nameOf(match.playerA);
-      const b = nameOf(match.playerB);
+      const others = match.players.filter((id) => id !== outcome);
       const label =
-        outcome === 'draw' ? `draw ${a} vs ${b}` : outcome === 'A' ? `${a} beat ${b}` : `${b} beat ${a}`;
+        outcome === 'draw'
+          ? `draw ${namesOf(match.players).join(' vs ')}`
+          : `${nameOf(outcome)} beat ${namesOf(others).join(', ')}`;
 
       concludeCurrentMatch(outcome);
 
@@ -203,7 +211,7 @@ function createTournament({
           // Rematch: the boss match stays current.
           state.currentMatch = { ...match, id: matchId(1) };
         } else {
-          state.champion = outcome === 'A' ? match.playerA : match.playerB;
+          state.champion = outcome;
           state.phase = 'finished';
           state.currentMatch = null;
           state.nextMatch = null;
@@ -211,7 +219,7 @@ function createTournament({
         return `boss battle: ${label}`;
       }
 
-      state.lastMatchPair = pairOf(match);
+      state.lastMatchPlayers = match.players;
       state.currentMatch = null;
       refreshMatches();
       return label;
@@ -225,21 +233,23 @@ function createTournament({
       if (!match) throw new ActionError('There is no current match');
 
       concludeCurrentMatch('skipped');
-      state.lastMatchPair = pairOf(match);
+      state.lastMatchPlayers = match.players;
       state.currentMatch = null;
       refreshMatches();
-      return `skip ${nameOf(match.playerA)} vs ${nameOf(match.playerB)}`;
+      return `skip ${namesOf(match.players).join(' vs ')}`;
     });
   }
 
-  function startBoss(playerAId, playerBId) {
+  function startBoss(players) {
     return act(() => {
       if (state.phase !== 'regular') throw new ActionError('The boss battle can only start from the regular phase');
-      if (!isActive(playerAId) || !isActive(playerBId)) throw new ActionError('Pick two active players');
-      if (playerAId === playerBId) throw new ActionError('Pick two different players');
+      if (!Array.isArray(players) || players.length < 2 || !players.every(isActive)) {
+        throw new ActionError('Pick at least two active players');
+      }
+      if (new Set(players).size !== players.length) throw new ActionError('Pick different players');
 
       state.phase = 'boss';
-      state.currentMatch = { id: matchId(1), playerA: playerAId, playerB: playerBId, isBoss: true };
+      state.currentMatch = { id: matchId(1), players, isBoss: true };
       state.nextMatch = null;
       return 'boss battle start';
     });
@@ -256,9 +266,32 @@ function createTournament({
     });
   }
 
+  function setMatchSize(size) {
+    return act(() => {
+      if (!Number.isInteger(size) || size < MIN_MATCH_SIZE || size > MAX_MATCH_SIZE) {
+        throw new ActionError(`Players per match must be ${MIN_MATCH_SIZE}-${MAX_MATCH_SIZE}`);
+      }
+      if (size === state.matchSize) throw new ActionError(`Matches already have ${size} players`);
+      state.matchSize = size;
+
+      // The current match has no result yet, so it can simply be picked again.
+      // A running boss battle is left alone; the new size applies after it.
+      if (state.phase === 'regular') {
+        state.currentMatch = null;
+        state.nextMatch = null;
+        refreshMatches();
+      }
+      return `players per match set to ${size}`;
+    });
+  }
+
   function resetScores() {
     return act(() => {
-      state = { ...emptyState(), players: state.players.filter((p) => p.active) };
+      state = {
+        ...emptyState(),
+        matchSize: state.matchSize,
+        players: state.players.filter((p) => p.active),
+      };
       refreshMatches();
       return 'reset scores';
     });
@@ -285,6 +318,7 @@ function createTournament({
     skip,
     startBoss,
     cancelBoss,
+    setMatchSize,
     undo,
     resetScores,
     resetAll,

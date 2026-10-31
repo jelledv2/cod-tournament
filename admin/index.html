@@ -27,6 +27,16 @@
       </section>
 
       <section class="panel">
+        <h2 class="panel-title">Players per match</h2>
+        <div class="stepper">
+          <button id="size-down" class="btn" type="button" aria-label="Fewer players per match">−</button>
+          <output id="size-value" class="display-type"></output>
+          <button id="size-up" class="btn" type="button" aria-label="More players per match">+</button>
+        </div>
+        <p id="size-note" class="note"></p>
+      </section>
+
+      <section class="panel">
         <h2 id="players-title" class="panel-title">Players</h2>
         <form id="add-form" class="add-form" autocomplete="off">
           <input id="add-name" type="text" maxlength="20" placeholder="Player name" aria-label="Player name" enterkeyhint="done" />
@@ -58,9 +68,8 @@
     <dialog id="boss-dialog">
       <form method="dialog">
         <h2>Start boss battle</h2>
-        <p class="note">Prefilled with the top 2. Change them to settle a tie.</p>
-        <label class="field">Player 1 <select id="boss-a"></select></label>
-        <label class="field">Player 2 <select id="boss-b"></select></label>
+        <p id="boss-hint" class="note"></p>
+        <div id="boss-fields"></div>
         <div class="dialog-actions">
           <button class="btn" type="submit" value="cancel">Cancel</button>
           <button class="btn btn-primary" type="submit" value="confirm">Start boss battle</button>

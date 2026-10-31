@@ -38,15 +38,12 @@ function renderStage(state) {
   }
 
   if (match.isBoss) stage.classList.add('is-boss');
+  const names = match.players.map((p) => el('div', nameClass('versus-name', p.name), p.name));
   stage.replaceChildren(
     el('p', 'stage-label', match.isBoss ? 'Boss battle: winner takes the title' : 'Now playing'),
-    el(
-      'div',
-      'versus',
-      el('div', nameClass('versus-name', match.playerA.name), match.playerA.name),
-      el('div', 'versus-vs display-type', 'VS'),
-      el('div', nameClass('versus-name', match.playerB.name), match.playerB.name)
-    )
+    names.length === 2
+      ? el('div', 'versus', names[0], el('div', 'versus-vs display-type', 'VS'), names[1])
+      : el('div', 'versus is-many', ...names)
   );
 }
 
@@ -54,7 +51,9 @@ function renderNext(state) {
   const next = state.nextMatch;
   $('next').hidden = !next;
   if (!next) return;
-  $('next-match').replaceChildren(next.playerA.name, el('span', 'vs', 'vs'), next.playerB.name);
+  $('next-match').replaceChildren(
+    ...next.players.flatMap((p, i) => (i === 0 ? [p.name] : [el('span', 'vs', 'vs'), p.name]))
+  );
 }
 
 const wideScreen = window.matchMedia('(min-width: 40rem)');
@@ -67,9 +66,7 @@ function renderBoard(state) {
     return;
   }
 
-  const playing = state.currentMatch
-    ? [state.currentMatch.playerA.id, state.currentMatch.playerB.id]
-    : [];
+  const playing = state.currentMatch ? state.currentMatch.players.map((p) => p.id) : [];
   const wide = wideScreen.matches; // phones get short column titles
   const columns = [
     ['#', 'col-rank', (r) => r.rank],
@@ -100,17 +97,28 @@ function renderProgress(state) {
   $('progress-fill').style.width = total ? `${(done / total) * 100}%` : '0';
 }
 
+// "A", "A and B", "A, B and C"
+function listNames(names) {
+  return names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
 function resultLine(match) {
-  const a = match.playerA.name;
-  const b = match.playerB.name;
-  if (match.outcome === 'skipped') return el('li', 'is-skipped', `${a} vs ${b} skipped`);
+  const names = match.players.map((p) => p.name);
+  if (match.outcome === 'skipped') return el('li', 'is-skipped', `${names.join(' vs ')} skipped`);
 
   const prefix = match.isBoss ? 'Boss battle: ' : '';
   if (match.outcome === 'draw') {
-    return el('li', match.isBoss ? 'is-boss' : '', `${prefix}${a} and ${b} drew`);
+    return el('li', match.isBoss ? 'is-boss' : '', `${prefix}${listNames(names)} drew`);
   }
-  const [winner, loser] = match.outcome === 'A' ? [a, b] : [b, a];
-  return el('li', match.isBoss ? 'is-boss' : '', prefix, el('span', 'winner', winner), ` beat ${loser}`);
+  const winner = match.players.find((p) => p.id === match.outcome);
+  const losers = match.players.filter((p) => p.id !== match.outcome).map((p) => p.name);
+  return el(
+    'li',
+    match.isBoss ? 'is-boss' : '',
+    prefix,
+    el('span', 'winner', winner.name),
+    ` beat ${listNames(losers)}`
+  );
 }
 
 function renderRecent(state) {
